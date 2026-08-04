@@ -6,6 +6,7 @@
  <title>How Cooked Are You?</title>
  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E🔥%3C/text%3E%3C/svg%3E">
  <script src="https://cdn.tailwindcss.com"></script>
+ <script src="fuzzyEngine.js"></script>
  <script>
  tailwind.config = { theme: { extend: { colors: { neon: '#6FFF00', cream: '#EFF4FF', darknavy: '#010828' } } } };
  </script>
@@ -233,7 +234,7 @@
 // ============================================================
 // STATE & HELPERS
 // ============================================================
-const API_ENDPOINT = '/api/chat';
+const API_ENDPOINT = (window.location.protocol === 'file:' || (window.location.port && window.location.port !== '3000')) ? 'http://localhost:3000/api/chat' : '/api/chat';
 let gameState = { assignmentLoad: 50, sleepHours: 6, walletBalance: 50, stressLevel: 50 };
 let diaryComplete = false, diaryPhase = 'idle', diaryEntryCount = 0, isSending = false;
 let touchedVars = { assignment: false, sleep: false, wallet: false, stress: false };
@@ -246,23 +247,8 @@ function allTouched() { return touchedVars.assignment && touchedVars.sleep && to
 function escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
 
 // ============================================================
-// FUZZY ENGINE (self-contained — no external dependencies)
+// FUZZY ENGINE (loaded from fuzzyEngine.js)
 // ============================================================
-class FuzzyEngine {
- constructor() {
- this.inputDefs = { assignmentLoad:{min:0,max:100,sets:{Light:[0,0,20,55],Packed:[25,45,55,75],Overloaded:[50,80,100,100]}}, sleepHours:{min:0,max:12,sets:{Zombie:[0,0,2,6],Functioning:[4,6,7,10],WellRested:[7,10,12,12]}}, walletBalance:{min:0,max:100,sets:{Broke:[0,0,15,45],Surviving:[20,40,60,80],Stable:[60,85,100,100]}}, stressLevel:{min:0,max:100,sets:{Chilling:[0,0,25,55],Concerned:[30,50,60,80],Screaming:[55,80,100,100]}} };
- this.outputDef = { min:0,max:100,sets:{AcademicVictim:[0,0,10,25],DeepFried:[20,35,45,55],Cooked:[45,55,65,75],HangingInThere:[65,75,85,90],Thriving:[85,90,100,100]} };
- this.rules = this._generateRules();
- }
- trapmf(x,a,b,c,d) { if (x>=b && x<=c) return 1; if (x<=a || x>=d) return 0; if (x>a && x<b) return (x-a)/(b-a); if (x>c && x<d) return (d-x)/(d-c); return 0; }
- _generateRules() {
- const aS=['Light','Packed','Overloaded'],sS=['Zombie','Functioning','WellRested'],wS=['Broke','Surviving','Stable'],tS=['Chilling','Concerned','Screaming'],oS=['AcademicVictim','DeepFried','Cooked','HangingInThere','Thriving'],sm={assignmentLoad:{Light:2,Packed:0,Overloaded:-2},sleepHours:{Zombie:-2,Functioning:0,WellRested:2},walletBalance:{Broke:-1,Surviving:0,Stable:1},stressLevel:{Chilling:2,Concerned:0,Screaming:-2}},rules=[];
- for(let ai=0;ai<3;ai++)for(let si=0;si<3;si++)for(let wi=0;wi<3;wi++)for(let ti=0;ti<3;ti++){const tot=sm.assignmentLoad[aS[ai]]+sm.sleepHours[sS[si]]+sm.walletBalance[wS[wi]]+sm.stressLevel[tS[ti]];let oi=tot>=5?4:(tot>=2?3:(tot>=-1?2:(tot>=-4?1:0)));rules.push({antecedents:[{var:'assignmentLoad',set:aS[ai]},{var:'sleepHours',set:sS[si]},{var:'walletBalance',set:wS[wi]},{var:'stressLevel',set:tS[ti]}],consequent:{set:oS[oi],idx:oi}});}
- return rules;
- }
- fuzzify(vn,v){const d=this.inputDefs[vn],r={};for(const[n,p]of Object.entries(d.sets))r[n]=this.trapmf(v,...p);return r;}
- evaluate(inputs){const f={};for(const[vn,v]of Object.entries(inputs))f[vn]=this.fuzzify(vn,v);const fr=[];for(const r of this.rules){let s=1;for(const a of r.antecedents)s=Math.min(s,f[a.var][a.set]);if(s>0.001)fr.push({...r,strength:s});}const ag=new Array(101).fill(0);for(const r of fr){const p=this.outputDef.sets[r.consequent.set];for(let x=0;x<=100;x++)ag[x]=Math.max(ag[x],Math.min(r.strength,this.trapmf(x,...p)));}let sum=0,sw=0;for(let x=0;x<=100;x++){sum+=x*ag[x];sw+=ag[x];}const cent=sw>0?sum/sw:50;let label='Cooked';if(cent>=85)label='Thriving';else if(cent>=65)label='Hanging In There';else if(cent>=45)label='Cooked';else if(cent>=20)label='Deep Fried';else label='Academic Victim';return {centroid:cent,score:cent,label,status:label,firingRules:fr,activeRules:fr,aggregated:ag,aggregatedOutput:ag,fuzzified:f,fuzzifiedInputs:f};};
-}
 
 const fuzzyEngine = new FuzzyEngine();
 
@@ -273,24 +259,60 @@ const MF_COLORS = { Light:'#34d399',Packed:'#f59e0b',Overloaded:'#f87171',Zombie
 // ============================================================
 function extractFromText(text, base) {
  const t = text.toLowerCase(); let s = { ...base };
- const aUp = ['assignment','project','hackathon','deadline','work','syllabus','club','committee','seketariat','task','presentation','report','final','exam','quiz','lab','tutorial','build','coding','develop','certificate','activit','group','meeting'];
- const aDn = ['easy','chill','light','nothing much','free time','relax','no assignment','holiday','break'];
- s.assignmentLoad = clamp(s.assignmentLoad + countM(t,aUp)*10 - countM(t,aDn)*12, 0, 100);
- const sDn = ["can't sleep","cant sleep","no sleep","insomnia","all nighter","barely sleep","awake","restless"];
- const sUp = ['proper sleep','8 hour','9 hour','well rested','good sleep','enough sleep'];
- if (countM(t,sDn)>0) s.sleepHours = clamp(s.sleepHours - 3, 0, 12);
- if (countM(t,sUp)>0) s.sleepHours = clamp(s.sleepHours + 2, 0, 12);
- const rng = t.match(/(\d+\.?\d*)\s*[-\u2013to]+\s*(\d+\.?\d*)\s*hour/);
- if (rng) s.sleepHours = clamp((parseFloat(rng[1])+parseFloat(rng[2]))/2, 0, 12);
- else { const sg = t.match(/(\d+\.?\d*)\s*hour/); if (sg) s.sleepHours = clamp(parseFloat(sg[1]), 0, 12); }
- const rm = t.match(/rm\s*(\d+)/g);
- if (rm) rm.forEach(m => { const a = parseInt(m.replace('rm','').trim()); if (a<=30) s.walletBalance=clamp(s.walletBalance-14,0,100); else if (a<=60) s.walletBalance=clamp(s.walletBalance-5,0,100); else s.walletBalance=clamp(s.walletBalance+6,0,100); });
- const wDn = ['broke','rm20','rm10','rm15','rm5','maggi','plain rice','no money','overspend','financial crisis','starving','instant noodle'];
- const wUp = ['enough money','saving','budget well','stable','extra money','allowance','comfortable'];
- s.walletBalance = clamp(s.walletBalance - countM(t,wDn)*15 + countM(t,wUp)*10, 0, 100);
- const stUp = ['anxiety','stress','overwhelm','scared','worry','panic','burnout','pressure','mental','depressed','cry','crying','struggling','exhausted','drained','fail'];
- const stDn = ['okay','fine','calm','chill','relaxed','survived','alright','good','happy','great','manage','issokay','coping'];
- s.stressLevel = clamp(s.stressLevel + countM(t,stUp)*12 - countM(t,stDn)*8, 0, 100);
+
+ // 1. Wallet
+ const rmMatch = t.match(/(?:rm\s*(\d+)|(\d+)\s*rm)/);
+ if (rmMatch) {
+     const val = parseInt(rmMatch[1] || rmMatch[2]);
+     s.walletBalance = clamp(val, 0, 100);
+ } else {
+     const wDn = ['broke','no money','overspend','financial crisis','starving','instant noodle','poor','empty wallet'];
+     const wUp = ['enough money','saving','budget well','stable','extra money','allowance','comfortable','rich'];
+     s.walletBalance = clamp(s.walletBalance - countM(t,wDn)*20 + countM(t,wUp)*15, 0, 100);
+ }
+
+ // 2. Sleep
+ const noSleepMatch = t.match(/no sleep|didn't sleep|didnt sleep|zero sleep|0 sleep|0 hour|0 hr/);
+ if (noSleepMatch) {
+     s.sleepHours = 0;
+ } else {
+     const rng = t.match(/(\d+\.?\d*)\s*[-\u2013to]+\s*(\d+\.?\d*)\s*(?:hour|hr)/);
+     const sg = t.match(/(\d+\.?\d*)\s*(?:hour|hr)/);
+     
+     if (rng) {
+         s.sleepHours = clamp((parseFloat(rng[1])+parseFloat(rng[2]))/2, 0, 12);
+     } else if (sg && !t.match(/didn't get|didnt get/)) {
+         s.sleepHours = clamp(parseFloat(sg[1]), 0, 12); 
+     } else {
+         const sDn = ["can't sleep","cant sleep","insomnia","all nighter","barely sleep","awake","restless","tired","sleepy"];
+         const sUp = ['proper sleep','well rested','good sleep','enough sleep','sleep well'];
+         s.sleepHours = clamp(s.sleepHours - countM(t,sDn)*3 + countM(t,sUp)*2, 0, 12);
+     }
+ }
+
+ // 3. Assignment
+ const numAssign = t.match(/(\d+)\s*(?:assignment|project|report|presentation|task|essay)/);
+ if (numAssign) {
+     const count = parseInt(numAssign[1]);
+     if (count >= 5) s.assignmentLoad = clamp(s.assignmentLoad + 40, 0, 100);
+     else if (count >= 3) s.assignmentLoad = clamp(s.assignmentLoad + 25, 0, 100);
+     else s.assignmentLoad = clamp(s.assignmentLoad + count * 10, 0, 100);
+ } else {
+     const aUp = ['assignment','project','hackathon','deadline','work','syllabus','club','committee','seketariat','task','presentation','report','final','exam','quiz','lab','tutorial','build','coding','develop','certificate','activit','group','meeting','heavy'];
+     const aDn = ['easy','chill','light','nothing much','free time','relax','no assignment','holiday','break','done'];
+     s.assignmentLoad = clamp(s.assignmentLoad + countM(t,aUp)*15 - countM(t,aDn)*15, 0, 100);
+ }
+
+ // 4. Stress
+ const stressMatch = t.match(/(?:stress|anxiety|depression).*?(\d+)\s*(?:%|percent)/);
+ if (stressMatch) {
+     s.stressLevel = clamp(parseInt(stressMatch[1]), 0, 100);
+ } else {
+     const stUp = ['anxiety','stress','overwhelm','scared','worry','panic','burnout','pressure','mental','depressed','cry','crying','struggling','exhausted','drained','fail','hard','tough'];
+     const stDn = ['okay','fine','calm','chill','relaxed','survived','alright','good','happy','great','manage','issokay','coping','easy'];
+     s.stressLevel = clamp(s.stressLevel + countM(t,stUp)*15 - countM(t,stDn)*15, 0, 100);
+ }
+
  return s;
 }
 
@@ -307,12 +329,17 @@ function updateTouched(text) {
 // ============================================================
 function buildSystemPrompt() {
  const missing = [];
- if (!touchedVars.assignment) missing.push('Assignment Load');
- if (!touchedVars.sleep) missing.push('Sleep Hours');
- if (!touchedVars.wallet) missing.push('Wallet Balance');
- if (!touchedVars.stress) missing.push('Stress Level');
- const isConcluding = (diaryEntryCount>=4||(diaryEntryCount>=3&&allTouched()));
- return `You are a sentient semester diary for a Malaysian uni student at Week 14. Be warm, sarcastic, and genuinely curious. Use Malaysian Gen Z slang naturally (weh, kot, siot, la) but sparingly. NEVER output JSON or code blocks. Plain text only. Variables still needed: ${missing.length>0?missing.join(', '):'all covered!'}. ${isConcluding?'This is your FINAL response. Give a warm conclusion. Do NOT ask a question.':''}${diaryPhase==='reflection'?'Acknowledge warmly in ONE sentence, then stop.':''}${!isConcluding&&diaryPhase!=='reflection'?'ASK one follow-up question about: '+(missing.length>0?missing.join(', '):'their overall experience')+'.':''}`;
+ if (!touchedVars.assignment) missing.push('how your workload/assignments are going');
+ if (!touchedVars.sleep) missing.push('how much sleep you are getting');
+ if (!touchedVars.wallet) missing.push('how your wallet/money situation is looking');
+ if (!touchedVars.stress) missing.push('how your stress levels/mental health is holding up');
+
+ const isConcluding = allTouched();
+ return `You are a kind, funny, and supportive Malaysian university friend who is chatting with the user at the end of their Week 14 semester. 
+Speak naturally like a close buddy—warm, relatable, with light humor. You can use simple Malaysian slang (weh, la, bestie, wey) naturally and sparingly, but NEVER use the word "siot". 
+Keep your messages short and sweet. 
+Always react directly to what the user says or answer any questions they ask first. 
+${isConcluding ? 'All variables are covered! This is your final message. End the conversation with a very warm, supportive, and proud conclusion. Do not ask any more questions.' : `If the user has not mentioned some aspects of their semester yet, gently ask or guide them to talk about: ${missing[0]}. Do not push or force them, just bring it up naturally in conversation.`}`;
 }
 
 async function callLogbookAI(userMessage) {
@@ -336,7 +363,7 @@ async function callLogbookAI(userMessage) {
 
 function getFallbackResponse(entryNum, userText) {
  const t = userText.toLowerCase();
- if (entryNum>=4||(entryNum>=3&&allTouched())) return pick(["You've been through a lot this semester — more than you give yourself credit for. Surviving all of that is already a massive win, bestie.","You basically went through a warzone and came out the other side — that's actually kind of impressive.","That's a lot to take in, but I think I understand your semester now — the good, the bad, and the maggi. You're tougher than you think."]);
+ if (allTouched()) return pick(["You've been through a lot this semester — more than you give yourself credit for. Surviving all of that is already a massive win, bestie.","You basically went through a warzone and came out the other side — that's actually kind of impressive.","That's a lot to take in, but I think I understand your semester now — the good, the bad, and the maggi. You're tougher than you think."]);
  let ack = '';
  if (hasAny(t,['did a lot','grinding','busy','lot of','hackathon','committee','club'])) ack = pick(["Weh, you did a lot, don't be so hard on yourself!","Hold on, you're downplaying yourself. That's a whole semester of grinding.","Bestie, you just listed a resume worth of stuff."]);
  else if (hasAny(t,['not good','bad','fail','terrible'])) ack = pick(["Hey, let's not jump to conclusions — sometimes we're our own harshest critics.","That's probably just your anxiety talking. Tell me what actually happened.","Okay but 'not good enough' according to who?"]);
@@ -384,7 +411,7 @@ async function sendDiaryMsg(){
  if(aiText)responseText=aiText;else responseText=getFallbackResponse(diaryEntryCount,text);
  gameState={...gameState,...localVars};updateVarBars();
  addDiaryMessage('logbook',responseText);
- const isConcluding=(diaryEntryCount>=4||(diaryEntryCount>=3&&allTouched()));
+ const isConcluding = allTouched();
  if(diaryPhase==='reflection'){document.getElementById('diary-status').textContent='computing...';setTimeout(finalizeDiary,1500);}
  else if(isConcluding){diaryPhase='concluding';document.getElementById('diary-status').textContent='reflecting...';setTimeout(showQuickReplies,1000);}
  else{document.getElementById('diary-status').textContent='listening...';}
@@ -417,12 +444,25 @@ function bootDiary(){
 // VARIABLE BARS
 // ============================================================
 function updateVarBars(){
+ const touchMap = {
+  assignmentLoad: 'assignment',
+  sleepHours: 'sleep',
+  walletBalance: 'wallet',
+  stressLevel: 'stress'
+ };
+
  [{key:'assignmentLoad',max:100,suffix:'%'},{key:'sleepHours',max:12,suffix:'h'},{key:'walletBalance',max:100,suffix:''},{key:'stressLevel',max:100,suffix:'%'}].forEach(v=>{
  const item=document.querySelector('.var-item[data-var="'+v.key+'"]');if(!item)return;
- const val=gameState[v.key],pct=(val/v.max)*100;
- item.querySelector('.var-value').textContent=val.toFixed(1)+v.suffix;
- item.querySelector('.var-bar-fill').style.width=pct+'%';
- item.classList.remove('pulse');void item.offsetWidth;item.classList.add('pulse');
+ const touched = touchedVars[touchMap[v.key]];
+ if (touched) {
+  const val=gameState[v.key],pct=(val/v.max)*100;
+  item.querySelector('.var-value').textContent=val.toFixed(1)+v.suffix;
+  item.querySelector('.var-bar-fill').style.width=pct+'%';
+  item.classList.remove('pulse');void item.offsetWidth;item.classList.add('pulse');
+ } else {
+  item.querySelector('.var-value').textContent='—';
+  item.querySelector('.var-bar-fill').style.width='0%';
+ }
  });
  const ind=document.getElementById('vars-scan-indicator');ind.classList.remove('hidden');setTimeout(()=>ind.classList.add('hidden'),800);
 }
@@ -495,6 +535,7 @@ function drawFuzzSVG(varName, value) {
 // RULE EVALUATION CLIPPING SVGs
 // ============================================================
 function drawRuleClipping(rule, fuzzified) {
+ const cardId = Math.random().toString(36).substring(2, 9);
  const actW = rule.strength;
  const outName = rule.consequent.set;
  const outColor = MF_COLORS[outName] || '#EFF4FF';
@@ -520,7 +561,7 @@ function drawRuleClipping(rule, fuzzified) {
  const mX = x => 3 + (x/antMax)*(AW-6);
  const mY = m => AH - 3 - m*(AH-10);
  const [a,b,c,d] = params;
- const cpId = 'clip-'+ant.var.replace(/([A-Z])/g,'_$1').toLowerCase()+'-'+ant.set.replace(/\s/g,'');
+ const cpId = 'clip-'+ant.var.replace(/([A-Z])/g,'_$1').toLowerCase()+'-'+ant.set.replace(/\s/g,'')+'-'+cardId;
 
  html += '<div class="flex flex-col items-center p-1.5 bg-slate-900/50 border border-slate-850/50 rounded-lg shrink-0">';
  html += '<span class="text-[8px] uppercase tracking-wider font-extrabold text-slate-400 font-mono">'+antLabels[ant.var]+'</span>';
@@ -544,7 +585,7 @@ function drawRuleClipping(rule, fuzzified) {
  const oX = x => 3 + (x/100)*(OW-6);
  const oY = m => OH - 3 - m*(OH-10);
  const [oa,ob,oc,od] = outParams;
- const oCpId = 'oclip-'+rule.antecedents.map(a=>a.set).join('');
+ const oCpId = 'oclip-'+rule.antecedents.map(a=>a.set).join('')+'-'+cardId;
  let oPts = ob===oc ? `${oX(oa)},${OH-3} ${oX(ob)},3 ${oX(od)},${OH-3}` : `${oX(oa)},${OH-3} ${oX(ob)},3 ${oX(oc)},3 ${oX(od)},${OH-3}`;
  html += '<svg width="'+OW+'" height="'+OH+'" class="overflow-visible my-0.5"><defs><clipPath id="'+oCpId+'"><rect x="0" y="'+oY(actW)+'" width="'+OW+'" height="'+(OH-3-oY(actW))+'"/></clipPath></defs>';
  html += '<polygon points="'+oPts+'" fill="none" stroke="'+outColor+'" stroke-width="0.7" stroke-dasharray="2,2"/>';
@@ -1025,6 +1066,26 @@ let gameLoopId = null;
 let gameTimeLeft = 20;
 let gameTimerId = null;
 
+let activeMoveHandler = null;
+let activeKeyHandler = null;
+let activeClickHandler = null;
+
+function cleanupMiniGameListeners() {
+ if (activeMoveHandler) {
+ window.removeEventListener('mousemove', activeMoveHandler);
+ activeMoveHandler = null;
+ }
+ if (activeKeyHandler) {
+ window.removeEventListener('keydown', activeKeyHandler);
+ activeKeyHandler = null;
+ }
+ if (activeClickHandler) {
+ const canvas = document.getElementById('canvas-minigame');
+ if (canvas) canvas.removeEventListener('mousedown', activeClickHandler);
+ activeClickHandler = null;
+ }
+}
+
 const gameVideos = {
  maggi: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_053923_22c0a6a5-313c-474c-85ff-3b50d25e944a.mp4",
  crammer: "https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_054411_511c1b7a-fb2f-42ef-bf6c-32c0b1a06e79.mp4",
@@ -1074,6 +1135,7 @@ function launchMiniGame(gameType) {
 function abortMiniGame() {
  if (gameTimerId) clearInterval(gameTimerId);
  if (gameLoopId) cancelAnimationFrame(gameLoopId);
+ cleanupMiniGameListeners();
  const videoBg = document.getElementById('game-video-bg');
  if (videoBg) videoBg.pause();
  const viewVid = document.getElementById('minigames-viewport-video');
@@ -1089,6 +1151,7 @@ function abortMiniGame() {
 function endMiniGame() {
  if (gameTimerId) clearInterval(gameTimerId);
  if (gameLoopId) cancelAnimationFrame(gameLoopId);
+ cleanupMiniGameListeners();
 
  const canvas = document.getElementById('canvas-minigame');
  const res = canvas.gameResults || { a: 0, s: 0, w: 0, st: 0 };
@@ -1097,6 +1160,11 @@ function endMiniGame() {
  gameState.sleepHours = clamp(gameState.sleepHours + res.s, 0, 12);
  gameState.walletBalance = clamp(gameState.walletBalance + res.w, 0, 100);
  gameState.stressLevel = clamp(gameState.stressLevel + res.st, 0, 100);
+
+ if (res.a !== 0) touchedVars.assignment = true;
+ if (res.s !== 0) touchedVars.sleep = true;
+ if (res.w !== 0) touchedVars.wallet = true;
+ if (res.st !== 0) touchedVars.stress = true;
 
  updateVarBars();
  currentFuzzyResult = fuzzyEngine.evaluate(gameState);
@@ -1139,10 +1207,11 @@ function runMaggiGame(canvas, ctx, w, h) {
  const rect = canvas.getBoundingClientRect();
  basket.x = Math.max(0, Math.min(w - basket.width, (e.clientX - rect.left) * (w / rect.width) - basket.width / 2));
  };
+ activeMoveHandler = moveHandler;
  window.addEventListener('mousemove', moveHandler);
 
  function update() {
- if (currentGame !== 'maggi') { window.removeEventListener('mousemove', moveHandler); return; }
+ if (currentGame !== 'maggi') { cleanupMiniGameListeners(); return; }
  if (Math.random() < 0.04) spawnItem();
 
  ctx.clearRect(0, 0, w, h);
@@ -1203,10 +1272,11 @@ function runCrammerGame(canvas, ctx, w, h) {
  } else if (key.length === 1 && /[A-Z]/.test(key)) activeInput += key;
  else if (key === 'BACKSPACE') activeInput = activeInput.slice(0, -1);
  };
+ activeKeyHandler = keyHandler;
  window.addEventListener('keydown', keyHandler);
 
  function update() {
- if (currentGame !== 'crammer') { window.removeEventListener('keydown', keyHandler); return; }
+ if (currentGame !== 'crammer') { cleanupMiniGameListeners(); return; }
  if (Math.random() < 0.02) spawnWord();
 
  ctx.clearRect(0, 0, w, h);
@@ -1263,10 +1333,11 @@ function runSheepGame(canvas, ctx, w, h) {
  }
  }
  };
+ activeClickHandler = clickHandler;
  canvas.addEventListener('mousedown', clickHandler);
 
  function update() {
- if (currentGame !== 'sheep') { canvas.removeEventListener('mousedown', clickHandler); return; }
+ if (currentGame !== 'sheep') { cleanupMiniGameListeners(); return; }
  if (Math.random() < 0.03) spawnSheep();
 
  ctx.clearRect(0, 0, w, h);
