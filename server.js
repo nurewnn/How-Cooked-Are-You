@@ -49,7 +49,7 @@ function callGemini(prompt, systemInstruction) {
                     { role: 'system', content: systemInstruction },
                     { role: 'user', content: prompt }
                 ],
-                max_tokens: 180,
+                max_tokens: 1024,
                 temperature: 0.8
             });
 
@@ -96,7 +96,7 @@ function callGemini(prompt, systemInstruction) {
                     parts: [{ text: systemInstruction }]
                 },
                 generationConfig: {
-                    maxOutputTokens: 180,
+                    maxOutputTokens: 1024,
                     temperature: 0.8
                 }
             });
@@ -174,8 +174,6 @@ const server = http.createServer((req, res) => {
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-
             let parsedRequest = {};
             try {
                 parsedRequest = JSON.parse(body);
@@ -198,8 +196,10 @@ const server = http.createServer((req, res) => {
 
                 try {
                     const text = await callGemini(parsedRequest.prompt, systemInstruction);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ text }));
                 } catch (err) {
+                    res.writeHead(502, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: err.message }));
                 }
             } else if (url === '/api/companion-reaction') {
@@ -214,8 +214,47 @@ const server = http.createServer((req, res) => {
 
                 try {
                     const text = await callGemini(parsedRequest.prompt, systemInstruction);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ text }));
                 } catch (err) {
+                    res.writeHead(502, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: err.message }));
+                }
+            } else if (url === '/api/chat') {
+                // New diary chat endpoint — accepts OpenAI-style messages array
+                const messages = parsedRequest.messages || [];
+                if (!Array.isArray(messages) || messages.length === 0) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: "Missing or empty 'messages' array" }));
+                    return;
+                }
+
+                // Extract system instruction from first message if role is system
+                let systemInstruction = '';
+                let chatMessages = [];
+                for (const msg of messages) {
+                    if (msg.role === 'system') {
+                        systemInstruction = msg.content;
+                    } else {
+                        chatMessages.push({ role: msg.role, content: msg.content });
+                    }
+                }
+
+                // If no system instruction found, use a default
+                if (!systemInstruction) {
+                    systemInstruction = 'You are a helpful assistant.';
+                }
+
+                // Build the prompt from user messages (last user message)
+                const lastUserMsg = chatMessages.filter(m => m.role === 'user').pop();
+                const prompt = lastUserMsg ? lastUserMsg.content : '';
+
+                try {
+                    const text = await callGemini(prompt, systemInstruction);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ text }));
+                } catch (err) {
+                    res.writeHead(502, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: err.message }));
                 }
             } else {
