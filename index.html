@@ -59,7 +59,7 @@
  <!-- ===================== WELCOME SCREEN ===================== -->
  <section id="welcome-screen" class="relative min-h-screen flex flex-col justify-between p-6 md:p-12 z-20 transition-all duration-700 bg-[#010828]/40">
  <div class="absolute inset-0 z-0"><video class="w-full h-full object-cover" autoplay loop muted playsinline src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_045634_e1c98c76-1265-4f5c-882a-4276f2080894.mp4"></video><div class="absolute inset-0 bg-gradient-to-t from-[#010828] via-transparent to-[#010828]/50"></div></div>
- <div class="z-10 flex justify-between items-center max-w-[1831px] w-full mx-auto font-mono-custom"><span class="text-xl font-grotesk tracking-widest text-cream uppercase">Orbis.Fuzzy</span><span class="text-xs font-mono-custom text-neon uppercase tracking-widest">Mamdani FIS — Student Survival Simulator</span></div>
+ <div class="z-10 flex flex-col md:flex-row justify-between items-center text-center max-w-[1831px] w-full mx-auto font-mono-custom gap-2"><span class="text-xl font-grotesk tracking-widest text-cream uppercase">Orbis.Fuzzy</span><span class="text-[9px] md:text-xs font-mono-custom text-neon uppercase tracking-widest">Mamdani FIS — Student Survival Simulator</span></div>
  <div class="z-10 text-center max-w-3xl mx-auto my-auto space-y-6"><div class="relative inline-block"><h2 class="text-5xl sm:text-7xl md:text-8xl font-grotesk text-cream uppercase leading-none tracking-tight">How Cooked<br>Are You?</h2><span class="text-3xl sm:text-5xl font-condiment text-neon absolute -right-6 -bottom-6 transform -rotate-6 select-none">survival simulator</span></div><p class="text-xs sm:text-sm text-cream/70 leading-relaxed max-w-xl mx-auto uppercase tracking-wide pt-4 font-mono-custom">A 14-week Malaysian university semester simulator driven by a mathematical Mamdani Fuzzy Inference Engine.</p><div class="pt-6"><button onclick="enterDashboard()" class="px-8 py-4 text-sm font-grotesk rounded-full text-cream liquid-glass tracking-wider uppercase hover:bg-neon hover:text-black">Start Semester</button></div></div>
  <div class="z-10 flex flex-col md:flex-row justify-between items-center max-w-[1831px] w-full mx-auto text-[10px] text-cream/40 tracking-widest uppercase gap-2 font-mono-custom"><span>Powered by Mamdani FLC</span><span>&copy; 2026 Orbis.Fuzzy.</span></div>
  </section>
@@ -1446,6 +1446,13 @@ function runSheepGame(canvas, ctx, w, h) {
 // Init
 window.addEventListener('DOMContentLoaded',()=>updateRoommateDialogue());
 window.quickTest=quickTest;window.resetGame=resetGame;
+
+// Mobile Video Unlocker: Force autoplay videos on first touch
+window.addEventListener('touchstart', () => {
+    document.querySelectorAll('video').forEach(v => {
+        if (v.paused) v.play().catch(()=>{});
+    });
+}, { once: true });
 </script>
 </body>
 </html>
