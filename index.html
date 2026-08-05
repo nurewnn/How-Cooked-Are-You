@@ -23,7 +23,7 @@
  .liquid-glass { background: rgba(255,255,255,0.02); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.12); box-shadow: inset 0 1px 1px rgba(255,255,255,0.2), 0 10px 30px rgba(0,0,0,0.5); position: relative; overflow: hidden; transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
  .liquid-glass:hover { border-color: rgba(111,255,0,0.3); box-shadow: inset 0 1px 2px rgba(255,255,255,0.3), 0 0 20px rgba(111,255,0,0.1), 0 15px 40px rgba(0,0,0,0.6); }
  .texture-overlay { position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0.05; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
- .bg-video-container { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; z-index: -10; opacity: 0.15; }
+ .bg-video-container { position: fixed; inset: 0; width: 100%; height: 100%; overflow: hidden; z-index: -10; opacity: 1.0; transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
  .bg-video { width: 100%; height: 100%; object-fit: cover; }
  ::-webkit-scrollbar { width: 6px; }
  ::-webkit-scrollbar-track { background: rgba(1,8,40,0.5); }
@@ -62,7 +62,7 @@
 
  <!-- ===================== WELCOME SCREEN ===================== -->
  <section id="welcome-screen" class="relative min-h-screen flex flex-col justify-between p-6 md:p-12 z-20 transition-all duration-700 bg-[#010828]/40">
- <div class="absolute inset-0 z-0"><video class="w-full h-full object-cover" autoplay loop muted playsinline src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260331_045634_e1c98c76-1265-4f5c-882a-4276f2080894.mp4"></video><div class="absolute inset-0 bg-gradient-to-t from-[#010828] via-transparent to-[#010828]/50"></div></div>
+ <div class="absolute inset-0 z-0"><div class="absolute inset-0 bg-gradient-to-t from-[#010828] via-transparent to-[#010828]/50"></div></div>
  <div class="z-10 flex flex-col md:flex-row justify-between items-center text-center max-w-[1831px] w-full mx-auto font-mono-custom gap-2"><span class="text-xl font-grotesk tracking-widest text-cream uppercase">Orbis.Fuzzy</span><span class="text-[9px] md:text-xs font-mono-custom text-neon uppercase tracking-widest">Mamdani FIS — Student Survival Simulator</span></div>
  <div class="z-10 text-center max-w-3xl mx-auto my-auto space-y-6"><div class="relative inline-block"><h2 class="text-5xl sm:text-7xl md:text-8xl font-grotesk text-cream uppercase leading-none tracking-tight">How Cooked<br>Are You?</h2><span class="text-3xl sm:text-5xl font-condiment text-neon absolute -right-6 -bottom-6 transform -rotate-6 select-none">survival simulator</span></div><p class="text-xs sm:text-sm text-cream/70 leading-relaxed max-w-xl mx-auto uppercase tracking-wide pt-4 font-mono-custom">A 14-week Malaysian university semester simulator driven by a mathematical Mamdani Fuzzy Inference Engine.</p><div class="pt-6"><button onclick="enterDashboard()" class="px-8 py-4 text-sm font-grotesk rounded-full text-cream liquid-glass tracking-wider uppercase hover:bg-neon hover:text-black">Start Semester</button></div></div>
  <div class="z-10 flex flex-col md:flex-row justify-between items-center max-w-[1831px] w-full mx-auto text-[10px] text-cream/40 tracking-widest uppercase gap-2 font-mono-custom"><span>Powered by Mamdani FLC</span><span>&copy; 2026 Orbis.Fuzzy.</span></div>
@@ -997,11 +997,14 @@ function updateRoommateDialogue(){
 function enterDashboard(){
  const w=document.getElementById('welcome-screen'),d=document.getElementById('game-dashboard');
  w.style.opacity='0';w.style.transform='scale(0.98)';
+ document.querySelector('.bg-video-container').style.opacity = '0.15';
  setTimeout(()=>{w.classList.add('hidden');d.classList.remove('hidden');requestAnimationFrame(()=>d.style.opacity='1');setTimeout(bootDiary,600);},700);
 }
 function exitToWelcome(){
  const w=document.getElementById('welcome-screen'),d=document.getElementById('game-dashboard');
- d.style.opacity='0';setTimeout(()=>{d.classList.add('hidden');w.classList.remove('hidden');w.style.opacity='1';w.style.transform='scale(1)';},700);
+ d.style.opacity='0';
+ document.querySelector('.bg-video-container').style.opacity = '1.0';
+ setTimeout(()=>{d.classList.add('hidden');w.classList.remove('hidden');w.style.opacity='1';w.style.transform='scale(1)';},700);
  toggleFuzzyModal(false);toggleDocModal(false);toggleMiniGamesHub(false);toggleRuleBaseModal(false);
 }
 function toggleFuzzyModal(show){const m=document.getElementById('fuzzylogic-modal');if(show){m.classList.remove('hidden');setTimeout(updateFuzzyModal,100);}else m.classList.add('hidden');}
