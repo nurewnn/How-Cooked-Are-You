@@ -27,14 +27,22 @@ try {
     console.error("Warning: Failed to read .env file:", e.message);
 }
 
+// Fallback to process.env if not loaded from .env file
+if (!geminiApiKey && process.env.GEMINI_API_KEY) {
+    geminiApiKey = process.env.GEMINI_API_KEY.trim().replace(/['"]/g, '');
+}
+if (!groqApiKey && process.env.GROQ_API_KEY) {
+    groqApiKey = process.env.GROQ_API_KEY.trim().replace(/['"]/g, '');
+}
+
 // Log loaded API key status
 if (groqApiKey && groqApiKey !== 'YOUR_GROQ_API_KEY_HERE') {
     console.log("✅ Groq API key loaded successfully. (Using Llama-3.3-70b-versatile)");
 } else if (geminiApiKey && geminiApiKey !== 'YOUR_GEMINI_API_KEY_HERE') {
     console.log("✅ Google Gemini API key loaded successfully. (Using Gemini-2.5-Flash)");
 } else {
-    console.log("\n⚠️  WARNING: Neither GEMINI_API_KEY nor GROQ_API_KEY is configured in your .env file.");
-    console.log("Please add your key in the .env file to enable AI dialogue.\n");
+    console.log("\n⚠️  WARNING: Neither GEMINI_API_KEY nor GROQ_API_KEY is configured in your .env file or environment variables.");
+    console.log("Please add your key to enable AI dialogue.\n");
 }
 
 // Helper to make API requests to either Groq or Gemini based on loaded keys
@@ -132,7 +140,7 @@ function callGemini(prompt, systemInstruction) {
             req.write(payload);
             req.end();
         } else {
-            reject(new Error("No valid API key configured. Please add GEMINI_API_KEY or GROQ_API_KEY to your .env file."));
+            reject(new Error("No valid API key configured. Please add GEMINI_API_KEY or GROQ_API_KEY to your environment variables."));
         }
     });
 }
