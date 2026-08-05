@@ -1451,6 +1451,15 @@ function runSheepGame(canvas, ctx, w, h) {
 window.addEventListener('DOMContentLoaded',()=>updateRoommateDialogue());
 window.quickTest=quickTest;window.resetGame=resetGame;
 
+// Mobile Video Unlocker: Force autoplay videos on first touch
+const unlockVideos = () => {
+    document.querySelectorAll('video').forEach(v => {
+        v.play().catch(e => console.log("Video autoplay blocked, waiting for next interaction.", e));
+    });
+};
+window.addEventListener('touchstart', unlockVideos, { once: true });
+window.addEventListener('click', unlockVideos, { once: true });
+
 </script>
 </body>
 </html>
