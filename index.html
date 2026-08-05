@@ -50,6 +50,10 @@
  .animate-scale-up { animation: scaleUp 0.3s ease-out; }
  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
  .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+ video { pointer-events: none !important; }
+ video::-webkit-media-controls { display: none !important; opacity: 0 !important; }
+ video::-webkit-media-controls-play-button { display: none !important; opacity: 0 !important; }
+ video::-webkit-media-controls-start-playback-button { display: none !important; opacity: 0 !important; }
  </style>
 </head>
 <body class="font-mono-custom selection:bg-neon selection:text-black">
@@ -115,8 +119,8 @@
 
  <!-- ===================== FUZZY LOGIC MODAL ===================== -->
  <div id="fuzzylogic-modal" class="fixed inset-0 z-40 bg-[#010828]/95 backdrop-blur-xl hidden flex items-center justify-center p-2 md:p-4 overflow-y-auto" onclick="if(event.target===this) toggleFuzzyModal(false)">
- <div class="liquid-glass rounded-[32px] max-w-6xl w-full p-6 md:p-8 space-y-8 max-h-[90vh] overflow-y-auto relative">
- <button onclick="toggleFuzzyModal(false)" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-cream hover:text-neon z-50 shadow-xl backdrop-blur-md"><i class="fa-solid fa-xmark text-xl"></i></button>
+ <button onclick="toggleFuzzyModal(false)" class="fixed top-4 right-4 md:top-8 md:right-8 w-12 h-12 flex items-center justify-center rounded-full bg-[#010828]/80 border border-white/20 text-cream hover:bg-neon hover:text-black z-[100] shadow-2xl backdrop-blur-xl transition-all"><i class="fa-solid fa-xmark text-2xl"></i></button>
+ <div class="liquid-glass rounded-[32px] max-w-6xl w-full p-6 md:p-8 space-y-8 max-h-[90vh] overflow-y-auto relative mt-12 md:mt-0">
  <header class="border-b border-white/10 pb-4">
  <span class="text-[9px] text-neon font-bold uppercase tracking-widest font-mono-custom">Mamdani FIS — Step-by-Step Evaluation</span>
  <h2 class="text-3xl font-grotesk text-cream uppercase mt-1">Fuzzy Logic Engine</h2>
@@ -167,8 +171,8 @@
 
  <!-- ===================== DOCS MODAL ===================== -->
  <div id="doc-modal" class="fixed inset-0 z-40 bg-[#010828]/95 backdrop-blur-xl hidden flex items-center justify-center p-2 md:p-4 overflow-y-auto" onclick="if(event.target===this) toggleDocModal(false)">
- <div class="liquid-glass rounded-[32px] max-w-3xl w-full p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto relative">
- <button onclick="toggleDocModal(false)" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-cream hover:text-neon z-50 shadow-xl backdrop-blur-md"><i class="fa-solid fa-xmark text-xl"></i></button>
+ <button onclick="toggleDocModal(false)" class="fixed top-4 right-4 md:top-8 md:right-8 w-12 h-12 flex items-center justify-center rounded-full bg-[#010828]/80 border border-white/20 text-cream hover:bg-neon hover:text-black z-[100] shadow-2xl backdrop-blur-xl transition-all"><i class="fa-solid fa-xmark text-2xl"></i></button>
+ <div class="liquid-glass rounded-[32px] max-w-3xl w-full p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto relative mt-12 md:mt-0">
  <header class="border-b border-white/10 pb-4"><span class="text-[9px] text-neon font-bold uppercase tracking-widest font-mono-custom">ISP568 Coursework</span><h2 class="text-3xl font-grotesk text-cream uppercase mt-1">How It Works</h2><p class="text-[11px] text-cream/50 mt-1 font-mono-custom">A Mamdani fuzzy inference system that evaluates your semester survival</p></header>
  <section class="space-y-3"><h3 class="text-sm font-grotesk text-neon uppercase tracking-wider">What is this?</h3><p class="text-xs text-cream/80 leading-relaxed font-mono-custom">This simulator uses <strong class="text-neon">fuzzy logic</strong> to calculate your "survival score" based on four key inputs: assignment load, sleep, wallet, and stress. Instead of binary true/false, fuzzy logic handles the grey areas — "kind of stressed", "somewhat broke", "barely sleeping" — and turns all that into one crisp score.</p></section>
  <section class="space-y-3"><h3 class="text-sm font-grotesk text-neon uppercase tracking-wider">How does it work?</h3><div class="space-y-3 text-xs text-cream/70 font-mono-custom">
@@ -190,8 +194,8 @@
 
  <!-- ===================== RULE BASE MODAL ===================== -->
  <div id="rulebase-modal" class="fixed inset-0 z-40 bg-[#010828]/95 backdrop-blur-xl hidden flex items-center justify-center p-2 md:p-4 overflow-y-auto" onclick="if(event.target===this) toggleRuleBaseModal(false)">
- <div class="liquid-glass rounded-[32px] max-w-6xl w-full p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto relative">
- <button onclick="toggleRuleBaseModal(false)" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-cream hover:text-neon z-50 shadow-xl backdrop-blur-md"><i class="fa-solid fa-xmark text-xl"></i></button>
+ <button onclick="toggleRuleBaseModal(false)" class="fixed top-4 right-4 md:top-8 md:right-8 w-12 h-12 flex items-center justify-center rounded-full bg-[#010828]/80 border border-white/20 text-cream hover:bg-neon hover:text-black z-[100] shadow-2xl backdrop-blur-xl transition-all"><i class="fa-solid fa-xmark text-2xl"></i></button>
+ <div class="liquid-glass rounded-[32px] max-w-6xl w-full p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto relative mt-12 md:mt-0">
  <header class="border-b border-white/10 pb-4"><span class="text-[9px] text-neon font-bold uppercase tracking-widest font-mono-custom">Mamdani Rule Base</span><h2 class="text-3xl font-grotesk text-cream uppercase mt-1">81 Fuzzy Rules</h2><p class="text-[11px] text-cream/50 mt-1 font-mono-custom">Complete 4-input rule set (3⁴ = 81 rules). Fired rules are highlighted.</p></header>
  <div class="flex flex-wrap gap-3 items-center text-[10px] font-mono-custom">
  <span class="text-cream/50">Filter:</span>
@@ -206,13 +210,13 @@
 
  <!-- ===================== MINI GAMES MODAL ===================== -->
  <div id="minigames-modal" class="fixed inset-0 z-40 bg-[#010828]/60 backdrop-blur-xl hidden flex items-center justify-center p-2 md:p-4 overflow-y-auto" onclick="if(event.target===this) toggleMiniGamesHub(false)">
+ <button onclick="toggleMiniGamesHub(false)" class="fixed top-4 right-4 md:top-8 md:right-8 w-12 h-12 flex items-center justify-center rounded-full bg-[#010828]/80 border border-white/20 text-cream hover:bg-neon hover:text-black z-[100] shadow-2xl backdrop-blur-xl transition-all"><i class="fa-solid fa-xmark text-2xl"></i></button>
  <div id="minigames-viewport-bg" class="absolute inset-0 z-0 opacity-0 transition-opacity duration-700 pointer-events-none overflow-hidden">
  <video id="minigames-viewport-video" class="w-full h-full object-cover" autoplay loop muted playsinline></video>
  <div class="absolute inset-0 bg-gradient-to-t from-[#010828] via-[#010828]/70 to-[#010828]/50"></div>
  </div>
- <div id="games-container-card" class="liquid-glass rounded-[32px] max-w-4xl w-full p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto relative z-10">
+ <div id="games-container-card" class="liquid-glass rounded-[32px] max-w-4xl w-full p-6 md:p-8 space-y-6 max-h-[90vh] overflow-y-auto relative z-10 mt-12 md:mt-0">
  <div class="absolute inset-0 z-0 opacity-10 pointer-events-none bg-slate-950/40"></div>
- <button onclick="toggleMiniGamesHub(false)" class="absolute top-4 right-4 md:top-6 md:right-6 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-cream hover:text-neon z-50 shadow-xl backdrop-blur-md"><i class="fa-solid fa-xmark text-xl"></i></button>
  <header class="border-b border-white/10 pb-4 z-10 relative"><span class="text-[9px] text-neon font-bold uppercase tracking-widest">Restoration Hub</span><h2 class="text-3xl font-grotesk text-cream uppercase mt-1">Mini Games</h2></header>
  <div id="games-list-grid" class="grid grid-cols-1 md:grid-cols-3 gap-6 z-10 relative">
  <div class="liquid-glass p-5 rounded-[24px] flex flex-col justify-between h-72 border border-white/5 hover:border-neon/30"><div><span class="text-[9px] text-orange-400 font-bold uppercase">Game 1 - Reflex</span><h4 class="text-lg font-grotesk text-cream uppercase mt-1">Maggi Chef</h4><p class="text-[11px] text-cream/60 mt-2">Catch ingredients, avoid roaches. +Wallet.</p></div><button onclick="launchMiniGame('maggi')" class="w-full py-2 bg-neon/10 hover:bg-neon hover:text-black border border-neon/30 text-xs font-grotesk rounded-xl transition uppercase">Launch</button></div>
@@ -1447,12 +1451,6 @@ function runSheepGame(canvas, ctx, w, h) {
 window.addEventListener('DOMContentLoaded',()=>updateRoommateDialogue());
 window.quickTest=quickTest;window.resetGame=resetGame;
 
-// Mobile Video Unlocker: Force autoplay videos on first touch
-window.addEventListener('touchstart', () => {
-    document.querySelectorAll('video').forEach(v => {
-        if (v.paused) v.play().catch(()=>{});
-    });
-}, { once: true });
 </script>
 </body>
 </html>
