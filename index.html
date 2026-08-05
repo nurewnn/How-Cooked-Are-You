@@ -291,15 +291,15 @@ function extractFromText(text, base) {
  }
 
  // 3. Assignment
- const numAssign = t.match(/(\d+)\s*(?:assignment|project|report|presentation|task|essay)/);
+ const numAssign = t.match(/(\d+)\s*(?:assignment|assingment|assign|assing|asg|hw|project|report|presentation|task|essay)/);
  if (numAssign) {
      const count = parseInt(numAssign[1]);
      if (count >= 5) s.assignmentLoad = clamp(s.assignmentLoad + 40, 0, 100);
      else if (count >= 3) s.assignmentLoad = clamp(s.assignmentLoad + 25, 0, 100);
      else s.assignmentLoad = clamp(s.assignmentLoad + count * 10, 0, 100);
  } else {
-     const aUp = ['assignment','project','hackathon','deadline','work','syllabus','club','committee','seketariat','task','presentation','report','final','exam','quiz','lab','tutorial','build','coding','develop','certificate','activit','group','meeting','heavy'];
-     const aDn = ['easy','chill','light','nothing much','free time','relax','no assignment','holiday','break','done'];
+     const aUp = ['assignment','assingment','assign','assing','asg','hw','homework','project','hackathon','deadline','work','syllabus','club','committee','seketariat','task','presentation','report','final','exam','quiz','lab','tutorial','build','coding','develop','certificate','activit','group','meeting','heavy'];
+     const aDn = ['easy','chill','light','nothing much','free time','relax','no assignment','no assingment','holiday','break','done'];
      s.assignmentLoad = clamp(s.assignmentLoad + countM(t,aUp)*15 - countM(t,aDn)*15, 0, 100);
  }
 
@@ -318,10 +318,10 @@ function extractFromText(text, base) {
 
 function updateTouched(text) {
  const t = text.toLowerCase();
- if (hasAny(t,['assignment','project','hackathon','work','club','committee','deadline','task','certificate','syllabus','exam','final','quiz','presentation','report','group','meeting'])) touchedVars.assignment=true;
- if (hasAny(t,['sleep','hour','tired','caffeine','coffee','rest','insomnia','nap','night','awake','bed'])) touchedVars.sleep=true;
- if (hasAny(t,['money','rm','wallet','broke','spend','makan','maggi','rice','financial','budget','food','eat','noodle','starving'])) touchedVars.wallet=true;
- if (hasAny(t,['stress','anxiety','shake','survive','hard','worry','panic','overwhelm','burnout','pressure','mental','cry','struggle','depressed','drained'])) touchedVars.stress=true;
+ if (hasAny(t,['assignment','assingment','assign','assing','asg','hw','homework','project','hackathon','work','club','committee','deadline','task','certificate','syllabus','exam','final','quiz','presentation','report','group','meeting'])) touchedVars.assignment=true;
+ if (hasAny(t,['sleep','hour','tired','caffeine','coffee','rest','insomnia','nap','night','awake','bed','slp','zombie','sleee'])) touchedVars.sleep=true;
+ if (hasAny(t,['money','rm','wallet','broke','spend','makan','maggi','rice','financial','budget','food','eat','noodle','starving','cash','poor'])) touchedVars.wallet=true;
+ if (hasAny(t,['stress','stres','anxiety','shake','survive','hard','worry','panic','overwhelm','burnout','pressure','mental','cry','struggle','depressed','drained','sad','cook'])) touchedVars.stress=true;
 }
 
 // ============================================================
@@ -365,7 +365,10 @@ function getFallbackResponse(entryNum, userText) {
  const t = userText.toLowerCase();
  if (allTouched()) return pick(["You've been through a lot this semester — more than you give yourself credit for. Surviving all of that is already a massive win, bestie.","You basically went through a warzone and came out the other side — that's actually kind of impressive.","That's a lot to take in, but I think I understand your semester now — the good, the bad, and the maggi. You're tougher than you think."]);
  let ack = '';
- if (hasAny(t,['did a lot','grinding','busy','lot of','hackathon','committee','club'])) ack = pick(["Weh, you did a lot, don't be so hard on yourself!","Hold on, you're downplaying yourself. That's a whole semester of grinding.","Bestie, you just listed a resume worth of stuff."]);
+ if (hasAny(t,['sad','depressed','cry','crying','stress','stressed','burnout','drained','struggle'])) ack = pick(["Sending you a big virtual hug. Seriously, take a deep breath.","I feel you, university life can really take a toll on mental health.","It's okay to feel overwhelmed, you're carrying a lot right now."]);
+ else if (hasAny(t,['great','haha','happy','easy','perfect','good','chill'])) ack = pick(["Ooooh look at you, absolutely thriving!","Haha love the energy! Share some of that confidence weh.","Living the dream! Must be nice not being cooked."]);
+ else if (hasAny(t,['broke','money','empty','wallet','poor','starving'])) ack = pick(["Oof, empty wallet hits different. Maggi is waiting...","Financial crisis is a classic uni experience, but still sucks.","The struggle is real. Nasi bujang lifestyle?"]);
+ else if (hasAny(t,['did a lot','grinding','busy','lot of','hackathon','committee','club'])) ack = pick(["Weh, you did a lot, don't be so hard on yourself!","Hold on, you're downplaying yourself. That's a whole semester of grinding.","Bestie, you just listed a resume worth of stuff."]);
  else if (hasAny(t,['not good','bad','fail','terrible'])) ack = pick(["Hey, let's not jump to conclusions — sometimes we're our own harshest critics.","That's probably just your anxiety talking. Tell me what actually happened.","Okay but 'not good enough' according to who?"]);
  else if (hasAny(t,['survived','made it','okay','alright','fine','issokay'])) ack = pick(["Glad you're still standing — surviving a whole semester is no joke.","'Surviving' and 'thriving' are different — let me dig a bit more.","That's real. But I want the messy parts too, not just the 'I'm fine' version."]);
  else ack = pick(["I hear you, go on — I'm listening properly.","Right, tell me more — it sounds like there's more underneath.","Mhm, noted. But something tells me there's a 'but' coming."]);
