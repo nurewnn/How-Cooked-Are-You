@@ -225,6 +225,7 @@
  </div>
  <div class="flex justify-between items-center w-full bg-[#010828]/80 p-3 rounded-xl border border-white/10 z-10"><span id="game-hud-title" class="text-xs font-bold text-neon uppercase">Game Running...</span><span id="game-hud-timer" class="text-xs text-cream font-bold">Time Left: 20s</span></div>
  <canvas id="canvas-minigame" class="w-full h-[320px] bg-slate-950/60 border border-white/10 rounded-2xl z-10 relative"></canvas>
+ <input type="text" id="game-mobile-keyboard-trigger" class="absolute opacity-0 pointer-events-none" style="width:1px; height:1px; left:0; bottom:0;" autocomplete="off" autocapitalize="characters">
  <button onclick="abortMiniGame()" class="w-full z-10 py-2.5 bg-red-950/40 hover:bg-red-500 text-cream text-xs font-bold rounded-xl transition uppercase border border-red-500/20">Exit / Give Up</button>
  </div>
  </div>
@@ -1072,11 +1073,22 @@ let gameTimerId = null;
 let activeMoveHandler = null;
 let activeKeyHandler = null;
 let activeClickHandler = null;
+let activeTouchMoveHandler = null;
+let activeTouchStartHandler = null;
+let activeInputHandler = null;
 
 function cleanupMiniGameListeners() {
  if (activeMoveHandler) {
  window.removeEventListener('mousemove', activeMoveHandler);
  activeMoveHandler = null;
+ }
+ if (activeTouchMoveHandler) {
+ window.removeEventListener('touchmove', activeTouchMoveHandler);
+ activeTouchMoveHandler = null;
+ }
+ if (activeTouchStartHandler) {
+ window.removeEventListener('touchstart', activeTouchStartHandler);
+ activeTouchStartHandler = null;
  }
  if (activeKeyHandler) {
  window.removeEventListener('keydown', activeKeyHandler);
@@ -1084,8 +1096,23 @@ function cleanupMiniGameListeners() {
  }
  if (activeClickHandler) {
  const canvas = document.getElementById('canvas-minigame');
- if (canvas) canvas.removeEventListener('mousedown', activeClickHandler);
+ if (canvas) {
+ canvas.removeEventListener('mousedown', activeClickHandler);
+ canvas.removeEventListener('touchstart', activeClickHandler);
+ canvas.removeEventListener('click', activeClickHandler);
+ }
  activeClickHandler = null;
+ }
+
+ const mobInput = document.getElementById('game-mobile-keyboard-trigger');
+ if (mobInput) {
+ if (activeInputHandler) {
+ mobInput.removeEventListener('input', activeInputHandler);
+ mobInput.removeEventListener('keydown', activeKeyHandler);
+ activeInputHandler = null;
+ }
+ mobInput.value = '';
+ mobInput.blur();
  }
 }
 
@@ -1213,6 +1240,17 @@ function runMaggiGame(canvas, ctx, w, h) {
  activeMoveHandler = moveHandler;
  window.addEventListener('mousemove', moveHandler);
 
+ const touchMoveHandler = (e) => {
+ if (e.touches && e.touches[0]) {
+ const rect = canvas.getBoundingClientRect();
+ basket.x = Math.max(0, Math.min(w - basket.width, (e.touches[0].clientX - rect.left) * (w / rect.width) - basket.width / 2));
+ }
+ };
+ activeTouchMoveHandler = (e) => { e.preventDefault(); touchMoveHandler(e); };
+ window.addEventListener('touchmove', activeTouchMoveHandler, { passive: false });
+ activeTouchStartHandler = activeTouchMoveHandler;
+ window.addEventListener('touchstart', activeTouchStartHandler, { passive: false });
+
  function update() {
  if (currentGame !== 'maggi') { cleanupMiniGameListeners(); return; }
  if (Math.random() < 0.04) spawnItem();
@@ -1266,17 +1304,47 @@ function runCrammerGame(canvas, ctx, w, h) {
  words.push({ text: txt, x: Math.random() * (w - 120) + 60, y: -10, vy: Math.random() * 0.8 + 0.6 });
  }
 
+ const processInput = (valStr) => {
+ if (valStr.endsWith(' ') || valStr.endsWith('\n')) {
+ const cleanVal = valStr.trim().toUpperCase();
+ let foundIndex = words.findIndex(w => w.text === cleanVal);
+ if (foundIndex !== -1) { words.splice(foundIndex, 1); workloadReduced += 6; score += 15; }
+ activeInput = '';
+ return true;
+ } else {
+ activeInput = valStr.toUpperCase().replace(/[^A-Z]/g, '');
+ return false;
+ }
+ };
+
  const keyHandler = (e) => {
  const key = e.key.toUpperCase();
  if (key === 'ENTER' || key === ' ') {
  let foundIndex = words.findIndex(w => w.text === activeInput);
  if (foundIndex !== -1) { words.splice(foundIndex, 1); workloadReduced += 6; score += 15; }
  activeInput = '';
+ const mobInput = document.getElementById('game-mobile-keyboard-trigger');
+ if (mobInput) mobInput.value = '';
  } else if (key.length === 1 && /[A-Z]/.test(key)) activeInput += key;
  else if (key === 'BACKSPACE') activeInput = activeInput.slice(0, -1);
  };
  activeKeyHandler = keyHandler;
  window.addEventListener('keydown', keyHandler);
+
+ const mobInput = document.getElementById('game-mobile-keyboard-trigger');
+ if (mobInput) {
+ mobInput.value = '';
+ mobInput.focus();
+ activeInputHandler = (e) => {
+ if (processInput(mobInput.value)) { mobInput.value = ''; }
+ };
+ mobInput.addEventListener('input', activeInputHandler);
+ mobInput.addEventListener('keydown', keyHandler);
+ 
+ activeClickHandler = () => { mobInput.focus(); };
+ canvas.addEventListener('click', activeClickHandler);
+ canvas.addEventListener('touchstart', activeClickHandler, { passive: false });
+ }
 
  function update() {
  if (currentGame !== 'crammer') { cleanupMiniGameListeners(); return; }
@@ -1326,18 +1394,27 @@ function runSheepGame(canvas, ctx, w, h) {
  });
  }
 
- const clickHandler = (e) => {
+ const handleInteraction = (clientX, clientY) => {
  const rect = canvas.getBoundingClientRect();
- const cx = (e.clientX - rect.left) * (w / rect.width);
- const cy = (e.clientY - rect.top) * (h / rect.height);
+ const cx = (clientX - rect.left) * (w / rect.width);
+ const cy = (clientY - rect.top) * (h / rect.height);
  for (let i = sheep.length - 1; i >= 0; i--) {
  if (Math.hypot(cx - sheep[i].x, cy - sheep[i].y) <= sheep[i].radius) {
  sheep.splice(i, 1); sleepRestored += 0.5; stressReduced += 5; score += 10; break;
  }
  }
  };
- activeClickHandler = clickHandler;
- canvas.addEventListener('mousedown', clickHandler);
+ 
+ activeClickHandler = (e) => {
+ if (e.type === 'touchstart') {
+ e.preventDefault();
+ if (e.touches && e.touches[0]) handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+ } else {
+ handleInteraction(e.clientX, e.clientY);
+ }
+ };
+ canvas.addEventListener('mousedown', activeClickHandler);
+ canvas.addEventListener('touchstart', activeClickHandler, { passive: false });
 
  function update() {
  if (currentGame !== 'sheep') { cleanupMiniGameListeners(); return; }
