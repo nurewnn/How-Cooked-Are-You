@@ -14,8 +14,36 @@ module.exports = async (req, res) => {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    // Vercel automatically parses JSON bodies into req.body
-    const messages = req.body?.messages || [];
+    // Bulletproof Body Parser: Handles pre-parsed object, string, Buffer, or Stream
+    let bodyObj = req.body;
+    if (!bodyObj) {
+        // Fallback: Read body from stream
+        bodyObj = await new Promise((resolve) => {
+            let chunkStr = '';
+            req.on('data', chunk => chunkStr += chunk);
+            req.on('end', () => {
+                try {
+                    resolve(JSON.parse(chunkStr));
+                } catch (e) {
+                    resolve({});
+                }
+            });
+        });
+    } else if (typeof bodyObj === 'string') {
+        try {
+            bodyObj = JSON.parse(bodyObj);
+        } catch (e) {
+            bodyObj = {};
+        }
+    } else if (Buffer.isBuffer(bodyObj)) {
+        try {
+            bodyObj = JSON.parse(bodyObj.toString());
+        } catch (e) {
+            bodyObj = {};
+        }
+    }
+
+    const messages = bodyObj?.messages || [];
     if (!Array.isArray(messages) || messages.length === 0) {
         return res.status(400).json({ error: "Missing or empty 'messages' array" });
     }
@@ -43,7 +71,7 @@ module.exports = async (req, res) => {
 
     // Helper function to call Groq
     const callGroq = () => new Promise((resolve, reject) => {
-        if (!groqApiKey || groqApiKey === 'YOUR_GROQ_API_KEY_HERE') return reject(new Error("No Groq Key"));
+        if (!groqApiKey || groqApiKey === 'YOUR_GROQ_API_KEY_HERE') return reject(new Error("No valid Groq Key configured on Vercel"));
         
         const url = 'https://api.groq.com/openai/v1/chat/completions';
         const payload = JSON.stringify({
@@ -70,7 +98,7 @@ module.exports = async (req, res) => {
                 try {
                     const parsed = JSON.parse(responseData);
                     if (response.statusCode !== 200) {
-                        reject(new Error(parsed.error?.message || `Groq HTTP ${response.statusCode} Error`));
+                        reject(new Error(parsed.error?.message || `Groq HTTP ${response.statusCode} Error: ${responseData}`));
                         return;
                     }
                     const t = parsed.choices?.[0]?.message?.content || '';
@@ -88,7 +116,7 @@ module.exports = async (req, res) => {
 
     // Helper function to call Gemini
     const callGemini = () => new Promise((resolve, reject) => {
-        if (!geminiApiKey || geminiApiKey === 'YOUR_GEMINI_API_KEY_HERE') return reject(new Error("No Gemini Key"));
+        if (!geminiApiKey || geminiApiKey === 'YOUR_GEMINI_API_KEY_HERE') return reject(new Error("No valid Gemini Key configured on Vercel"));
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
         const payload = JSON.stringify({
@@ -110,7 +138,7 @@ module.exports = async (req, res) => {
                 try {
                     const parsed = JSON.parse(responseData);
                     if (response.statusCode !== 200) {
-                        reject(new Error(parsed.error?.message || `Gemini HTTP ${response.statusCode} Error`));
+                        reject(new Error(parsed.error?.message || `Gemini HTTP ${response.statusCode} Error: ${responseData}`));
                         return;
                     }
                     const t = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -126,6 +154,8 @@ module.exports = async (req, res) => {
         reqObj.end();
     });
 
+    let errors = [];
+
     try {
         let text;
         try {
@@ -133,12 +163,29 @@ module.exports = async (req, res) => {
             text = await callGroq();
         } catch (groqErr) {
             console.warn("Groq failed, trying Gemini...", groqErr.message);
+            errors.push("GroqError: " + groqErr.message);
+            
             // If Groq fails (e.g. invalid key, expired), fallback to Gemini
-            text = await callGemini();
+            try {
+                text = await callGemini();
+            } catch (geminiErr) {
+                errors.push("GeminiError: " + geminiErr.message);
+                throw new Error("Both APIs failed.");
+            }
         }
         res.status(200).json({ text });
     } catch (err) {
-        // If BOTH fail, return 502
-        res.status(502).json({ error: err.message });
+        // Return 502 with massive diagnostics payload
+        res.status(502).json({ 
+            error: "All AI APIs failed",
+            details: errors,
+            diagnostics: {
+                hasGroqKey: !!groqApiKey && groqApiKey !== 'YOUR_GROQ_API_KEY_HERE',
+                hasGeminiKey: !!geminiApiKey && geminiApiKey !== 'YOUR_GEMINI_API_KEY_HERE',
+                groqLength: groqApiKey ? groqApiKey.length : 0,
+                geminiLength: geminiApiKey ? geminiApiKey.length : 0,
+                envKeysDetected: Object.keys(process.env).filter(k => k.includes('API') || k.includes('KEY') || k.includes('GROQ') || k.includes('GEMINI'))
+            }
+        });
     }
 };
